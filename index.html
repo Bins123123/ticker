@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G.S. Wilcox Rate Ticker</title>
+<style>
+{ box-sizing: border-box; margin: 0; padding: 0; }
+body { background: transparent; overflow: hidden; }
+.rt2-ticker {
+display: flex;
+align-items: stretch;
+width: 100%;
+background: #faf9f8;
+color: #201f1e;
+font: 400 14px/1.2 "Segoe UI", -apple-system, sans-serif;
+overflow: hidden;
+border-radius: 2px;
+box-shadow: 0 0 0 1px #edebe9;
+}
+.rt2-pin {
+flex: none;
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 0 14px;
+background: #0078d4;
+color: #fff;
+z-index: 2;
+white-space: nowrap;
+}
+.rt2-pin-title { font-weight: 600; font-size: 13px; }
+.rt2-pin-sub { font-size: 11px; opacity: 0.9; }
+.rt2-window {
+flex: 1;
+min-width: 0;
+overflow: hidden;
+-webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+.rt2-track {
+display: flex;
+width: max-content;
+animation: rt2-scroll 40s linear infinite;
+}
+.rt2-ticker:hover .rt2-track { animation-play-state: paused; }
+.rt2-set { display: flex; align-items: center; flex: none; }
+.rt2-group { display: flex; align-items: center; gap: 14px; padding: 11px 0; white-space: nowrap; }
+.rt2-label, .rt2-rate { display: flex; align-items: baseline; gap: 6px; }
+.rt2-name { font-size: 13px; font-weight: 600; }
+.rt2-term { font-size: 12px; color: #0078d4; font-weight: 600; }
+.rt2-val { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rt2-sep { width: 1px; height: 16px; background: #c8c6c4; margin: 0 22px; flex: none; }
+@keyframes rt2-scroll { to { transform: translateX(-50%); } }
+</style>
+</head>
+<body>
+<div class="rt2-ticker" role="region" aria-label="Current rates from G.S. Wilcox &amp; Co">
+<div class="rt2-pin">
+<span class="rt2-pin-title">Current rates</span>
+<span class="rt2-pin-sub">from G.S. Wilcox &amp; Co</span>
+</div>
+<div class="rt2-window">
+<div class="rt2-track" id="tickerTrack">
+<!-- Dynamically populated from SharePoint List -->
+</div>
+</div>
+</div>
+<script>
+const SHAREPOINT_SITE_URL = "https://binswanger365.sharepoint.com/sites/dashboard-site";
+const LIST_NAME = "RateTicker";
+async function fetchRates() {
+const track = document.getElementById("tickerTrack");
+try {
+const response = await fetch(${SHAREPOINT_SITE_URL}/_api/web/lists/getbytitle('${LIST_NAME}')/items, {
+headers: { "Accept": "application/json;odata=verbose" },
+credentials: "include"
+});
+if (!response.ok) throw new Error("Network error fetching rates");
+const data = await response.json();
+const items = data.d.results;
+if (!items || items.length === 0) return;
+let contentHtml = '<div class="rt2-set">';
+items.forEach(item => {
+contentHtml += `
+<div class="rt2-group">
+<span class="rt2-label"><span class="rt2-name">${item.Title || ''}</span></span>
+{item.Term5 ? `<span class="rt2-rate"><span class="rt2-term">5 yr</span><span class="rt2-val">{item.Term5}</span></span>` : ''}
+{item.Term10 ? `<span class="rt2-rate"><span class="rt2-term">10 yr</span><span class="rt2-val">{item.Term10}</span></span>` : ''}
+</div>
+<span class="rt2-sep"></span>
+`;
+});
+contentHtml += '</div>';
+// Duplicate once for infinite loop animation
+track.innerHTML = contentHtml + contentHtml;
+} catch (err) {
+console.error("Error loading rates from SharePoint:", err);
+}
+}
+fetchRates();
+</script>
+</body>
+</html>
